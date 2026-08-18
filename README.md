@@ -1,5 +1,19 @@
 # 简历上展示黑马点评
 
+---
+
+## 🌟 推荐项目
+
+如果你对 AI 编程或 Coding Agent 感兴趣，推荐我的另一个开源教程项目：
+
+[**📖 my-easy-pi**](https://github.com/KNeegcyao/my-easy-pi) — 从零学习 AI Coding Agent 的渐进式教程，10 章带你逐层理解 Agent 工作原理。基于 Pi 设计哲学的精简实现，通过动手搭建真正理解 AI Agent 如何工作。
+
+> 技术栈：TypeScript · Node.js · 500+ 测试用例 · 支持 npm 安装
+
+[![my-easy-pi](https://github-readme-stats.vercel.app/api/pin/?username=KNeegcyao&repo=my-easy-pi)](https://github.com/KNeegcyao/my-easy-pi)
+
+---
+
 ## 项目描述
 
 黑马点评项目是一个springboot开发的前后端分离项目，使用了redis集群、tomcat集群、MySQL集群提高服务性能。类似于大众点评，实现了短信登录、商户查询缓存、优惠卷秒杀、附近的商户、UV统计、用户签到、好友关注、达人探店  八个部分形成了闭环。其中重点使用了分布式锁实现了一人一单功能、项目中大量使用了Redis 的知识。
@@ -1185,15 +1199,3 @@ UV统计（Unique Visitor Statistics）是用于衡量网站、应用程序或�
 
 ```
 
-
----
-
-## 🌟 推荐项目
-
-如果你对 AI 编程或 Coding Agent 感兴趣，推荐我的另一个开源教程项目：
-
-[**📖 my-easy-pi**](https://github.com/KNeegcyao/my-easy-pi) — 从零学习 AI Coding Agent 的渐进式教程，10 章带你逐层理解 Agent 工作原理。基于 Pi 设计哲学的精简实现，通过动手搭建真正理解 AI Agent 如何工作。
-
-> 技术栈：TypeScript · Node.js · 500+ 测试用例 · 支持 npm 安装
-
-[![my-easy-pi](https://github-readme-stats.vercel.app/api/pin/?username=KNeegcyao&repo=my-easy-pi)](https://github.com/KNeegcyao/my-easy-pi)
