@@ -8,10 +8,6 @@
 
 [**📖 my-easy-pi**](https://github.com/KNeegcyao/my-easy-pi) — 从零学习 AI Coding Agent 的渐进式教程，10 章带你逐层理解 Agent 工作原理。基于 Pi 设计哲学的精简实现，通过动手搭建真正理解 AI Agent 如何工作。
 
-> 技术栈：TypeScript · Node.js · 500+ 测试用例 · 支持 npm 安装
-
-[![my-easy-pi](https://github-readme-stats.vercel.app/api/pin/?username=KNeegcyao&repo=my-easy-pi)](https://github.com/KNeegcyao/my-easy-pi)
-
 ---
 
 ## 项目描述
