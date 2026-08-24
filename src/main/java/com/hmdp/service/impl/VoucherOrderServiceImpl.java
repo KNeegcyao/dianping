@@ -38,14 +38,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/**
- * <p>
- *  服务实现类
- * </p>
- *
- * @author 虎哥
- * @since 2021-12-22
- */
+
 @Slf4j
 @Service
 public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, VoucherOrder> implements IVoucherOrderService {
@@ -175,7 +168,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         }
     }*/
 
-        public void handleVoucherOrder(VoucherOrder voucherOrder) {
+    public void handleVoucherOrder(VoucherOrder voucherOrder) {
             //1.获取用户
             Long userId = voucherOrder.getUserId();
             //2.创建锁对象
@@ -221,6 +214,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
             //2.1.不为0，代表没有购买资格
             return Result.fail(r==1?"库存不足":"不能重复下单");
         }
+
 //        //3.获取代理对象
 //        proxy = (IVoucherOrderService) AopContext.currentProxy();
 //        //4.返回订单id

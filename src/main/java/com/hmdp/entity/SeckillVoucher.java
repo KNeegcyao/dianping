@@ -10,14 +10,7 @@ import lombok.experimental.Accessors;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
-/**
- * <p>
- * 秒杀优惠券表，与优惠券是一对一关系
- * </p>
- *
- * @author 虎哥
- * @since 2022-01-04
- */
+
 @Data
 @EqualsAndHashCode(callSuper = false)
 @Accessors(chain = true)

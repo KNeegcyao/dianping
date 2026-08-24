@@ -78,7 +78,7 @@ public class QueueConfig {
     }
 
     /**
-     * d队列绑定y交换机
+     * D队列绑定Y交换机
      * @param queueD
      * @return
      */
