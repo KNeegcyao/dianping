@@ -9,6 +9,8 @@ import com.hmdp.entity.User;
 import com.hmdp.mapper.FollowMapper;
 import com.hmdp.service.IFollowService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.hmdp.service.IUserService;
+import com.hmdp.utils.RedisConstants;
 import com.hmdp.utils.UserHolder;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -28,12 +30,12 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
     private StringRedisTemplate stringRedisTemplate;
 
     @Resource
-    private UserServiceImpl userService;
+    private IUserService userService;
     @Override
     public Result follow(Long followUserId, Boolean isFollow) {
         //获取登录用户
         Long userId = UserHolder.getUser().getId();
-        String key = "follows:" + userId;
+        String key = RedisConstants.FOLLOW_KEY + userId;
         //1.判断关注还是取关
         if(isFollow) {
             //2.关注
@@ -71,9 +73,9 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
     public Result followCommons(Long id) {
         //获取当前用户
         Long userId = UserHolder.getUser().getId();
-        String key = "follows:" + userId;
+        String key = RedisConstants.FOLLOW_KEY + userId;
         //求交集
-        String key2 = "follows:" + id;
+        String key2 = RedisConstants.FOLLOW_KEY + id;
         Set<String> intersect = stringRedisTemplate.opsForSet().intersect(key, key2);
         if(intersect==null||intersect.isEmpty()){
             return Result.ok(Collections.emptyList());

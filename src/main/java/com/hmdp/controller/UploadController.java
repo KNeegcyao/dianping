@@ -34,10 +34,19 @@ public class UploadController {
         }
     }
 
-    @GetMapping("/blog/delete")
+    @DeleteMapping("/blog/delete")
     public Result deleteBlogImg(@RequestParam("name") String filename) {
-        File file = new File(SystemConstants.IMAGE_UPLOAD_DIR, filename);
-        if (file.isDirectory()) {
+        // 仅允许删除博客上传目录内的图片，阻止路径穿越（../ 等）
+        if (StrUtil.isBlank(filename) || !StrUtil.startWith(filename, "/blogs/")) {
+            return Result.fail("错误的文件名称");
+        }
+        String normalized = FileUtil.normalize(SystemConstants.IMAGE_UPLOAD_DIR + filename);
+        String dir = FileUtil.normalize(SystemConstants.IMAGE_UPLOAD_DIR);
+        if (!normalized.startsWith(dir)) {
+            return Result.fail("错误的文件名称");
+        }
+        File file = new File(normalized);
+        if (file.isDirectory() || !file.exists()) {
             return Result.fail("错误的文件名称");
         }
         FileUtil.del(file);

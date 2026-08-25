@@ -27,9 +27,10 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.LongStream;
 
 import static com.hmdp.utils.RedisConstants.BLOG_LIKED_KEY;
 import static com.hmdp.utils.RedisConstants.FEED_KEY;
@@ -54,11 +55,12 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
         // 获取当前页数据
         List<Blog> records = page.getRecords();
-        // 查询用户
-        records.forEach(blog -> {
-            this.isBlogLiked(blog);
-            this.queryBlogUser(blog);
-        });
+        if (records == null || records.isEmpty()) {
+            return Result.ok(Collections.emptyList());
+        }
+        // 批量查询作者信息，避免逐条查询造成的 N+1 问题
+        batchQueryBlogUser(records);
+        records.forEach(this::isBlogLiked);
         return Result.ok(records);
     }
 
@@ -217,8 +219,33 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
     private void queryBlogUser(Blog blog) {
         Long userId = blog.getUserId();
         User user = userService.getById(userId);
-        blog.setName(user.getNickName());
-        blog.setIcon(user.getIcon());
+        if (user != null) {
+            blog.setName(user.getNickName());
+            blog.setIcon(user.getIcon());
+        }
+    }
+
+    /**
+     * 批量填充博文作者信息，减少 N+1 查询。
+     */
+    private void batchQueryBlogUser(List<Blog> blogs) {
+        List<Long> userIds = blogs.stream()
+                .map(Blog::getUserId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        if (userIds.isEmpty()) {
+            return;
+        }
+        Map<Long, User> userMap = userService.listByIds(userIds).stream()
+                .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
+        for (Blog blog : blogs) {
+            User user = userMap.get(blog.getUserId());
+            if (user != null) {
+                blog.setName(user.getNickName());
+                blog.setIcon(user.getIcon());
+            }
+        }
     }
 
 }

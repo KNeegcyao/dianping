@@ -109,8 +109,8 @@ public class CacheClient {
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }finally {
-                    //释放锁
-                    unLock(key);
+                    //释放锁：必须释放 lockKey，而非缓存键 key
+                    unLock(lockKey);
                 }
             });
 

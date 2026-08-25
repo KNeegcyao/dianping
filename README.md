@@ -491,120 +491,114 @@ while(true){
       port: 5672
       username: guest
       password: guest
+      listener:
+        simple:
+          # 手动确认模式：消费者处理成功后需调用 basicAck，失败则 basicNack 丢弃，防止毒消息无限重投
+          acknowledge-mode: manual
+          concurrency: 5        # 并发消费者数量
+          prefetch: 10          # 每个消费者预取消息数
 ```
 
 - **2. 声明队列和交换机**
   - **正常队列和交换机的绑定：**
-     commonExchange ("Common") → 使用路由键 "CQ" 绑定到 queueC ("CQ")。
+     xExchange ("X") → 使用路由键 "XA" 绑定到 queueA ("QA")。
   - **死信队列和交换机的绑定：**
-     deadLetterExchange ("Dead-letter") → 使用路由键 "DLQ" 绑定到 deadLetterQueueD ("DLQ")。
+     yExchange ("Y") → 使用路由键 "YD" 绑定到 queueD ("QD")。
   - **普通队列到死信交换机的关系（死信机制）：**
-     queueC ("CQ") 配置了：
-    - 死信交换机为 **Dead-letter**；
-    - 死信路由键为 **"DLQ"**；
+     queueA ("QA") 配置了：
+    - 死信交换机为 **Y**；
+    - 死信路由键为 **"YD"**；
     - TTL 为 10 秒。
-  - 当 **queueC** 中的消息超过 TTL 或触发其它死信条件后，这些消息将被自动发送到 **deadLetterExchange**，再由 **deadLetterExchange** 根据 **"DLQ"** 路由键路由到 **deadLetterQueueD**。
+  - 当 **queueA** 中的消息超过 TTL 或触发其它死信条件后，这些消息将被自动发送到 **yExchange**，再由 **yExchange** 根据 **"YD"** 路由键路由到 **queueD**。
 
 ```java
 @Configuration
 public class QueueConfig {
 
     // 普通交换机名称
-    public static final String COMMON_EXCHANGE = "Common";
+    public static final String X_EXCHANGE = "X";
     // 死信交换机名称
-    public static final String DEAD_DEAD_LETTER_EXCHANGE = "Dead-letter";
+    public static final String Y_DEAD_LETTER_EXCHANGE = "Y";
     // 普通队列名称
-    public static final String QUEUE_C = "CQ";
+    public static final String QUEUE_A = "QA";
     // 死信队列名称
-    public static final String DEAD_LETTER_QUEUE_D = "DLQ";
+    public static final String DEAD_LETTER_QUEUE_D = "QD";
+    // 普通队列绑定路由键
+    public static final String QUEUE_A_BINDING_KEY = "XA";
+    // 死信路由键
+    public static final String DEAD_LETTER_ROUTING_KEY = "YD";
 
     /**
-     * 声明普通交换机
-     * 
-     * @return DirectExchange
+     * 声明普通交换机 X
      */
-    @Bean("commonExchange")
-    public DirectExchange commonExchange(){
-        return new DirectExchange(COMMON_EXCHANGE);
+    @Bean("xExchange")
+    public DirectExchange xExchange(){
+        return new DirectExchange(X_EXCHANGE);
     }
 
     /**
-     * 声明死信交换机
-     * 
-     * @return DirectExchange
+     * 声明死信交换机 Y
      */
-    @Bean("deadLetterExchange")
-    public DirectExchange deadLetterExchange(){
-        return new DirectExchange(DEAD_DEAD_LETTER_EXCHANGE);
+    @Bean("yExchange")
+    public DirectExchange yExchange(){
+        return new DirectExchange(Y_DEAD_LETTER_EXCHANGE);
     }
 
     /**
-     * 声明普通队列C, 并绑定死信交换机及设置消息TTL
-     * 
-     * 设置说明：
-     * - x-dead-letter-exchange: 配置消息过期后转发的死信交换机名称
-     * - x-dead-letter-routing-key: 配置转发到死信交换机时使用的路由键，此处与死信队列绑定时的路由键一致（"DLQ"）
-     * - x-message-ttl: 消息存活时间（此处设置为10000毫秒，即10秒）
-     *
-     * @return Queue
+     * 声明普通队列 QA，并绑定死信交换机及设置消息 TTL
+     * - x-dead-letter-exchange: 消息过期后转发的死信交换机
+     * - x-dead-letter-routing-key: 转发到死信交换机时使用的路由键
+     * - x-message-ttl: 消息存活时间（10 秒）
      */
-    @Bean("queueC")
-    public Queue queueC(){
+    @Bean("queueA")
+    public Queue queueA(){
         HashMap<String, Object> arguments = new HashMap<>();
-        // 消息在队列中存活10秒后失效，进入死信队列
+        arguments.put("x-dead-letter-exchange", Y_DEAD_LETTER_EXCHANGE);
+        arguments.put("x-dead-letter-routing-key", DEAD_LETTER_ROUTING_KEY);
         arguments.put("x-message-ttl", 10000);
-        // 配置死信交换机
-        arguments.put("x-dead-letter-exchange", DEAD_DEAD_LETTER_EXCHANGE);
-        // 配置死信路由键，绑定到死信队列时使用
-        arguments.put("x-dead-letter-routing-key", "DLQ");
 
-        return QueueBuilder.durable(QUEUE_C)
+        return QueueBuilder.durable(QUEUE_A)
                            .withArguments(arguments)
                            .build();
     }
 
     /**
-     * 声明死信队列D
-     * 
-     * @return Queue
+     * 声明死信队列 QD
      */
-    @Bean("deadLetterQueueD")
-    public Queue deadLetterQueueD(){
+    @Bean("queueD")
+    public Queue queueD(){
         return QueueBuilder.durable(DEAD_LETTER_QUEUE_D)
                            .build();
     }
 
     /**
-     * 普通队列C与普通交换机Common绑定
-     *
-     * 当消息发送到交换机Common，并使用路由键 "CQ" 时，
-     * 消息将被路由到队列CQ。
-     *
-     * @param queueC 普通队列
-     * @param commonExchange 普通交换机
-     * @return Binding
+     * 普通队列 QA 与普通交换机 X 绑定（路由键 XA）
      */
     @Bean
-    public Binding bindingQueueCToCommonExchange(@Qualifier("queueC") Queue queueC,
-                                                 @Qualifier("commonExchange") DirectExchange commonExchange) {
-        return BindingBuilder.bind(queueC).to(commonExchange).with("CQ");
+    public Binding queueABindingX(@Qualifier("queueA") Queue queueA,
+                                  @Qualifier("xExchange") DirectExchange xExchange) {
+        return BindingBuilder.bind(queueA).to(xExchange).with(QUEUE_A_BINDING_KEY);
     }
 
     /**
-     * 死信队列D与死信交换机Dead-letter绑定
-     *
-     * 当普通队列CQ中的消息由于TTL过期或其他原因被转为死信后，
-     * 消息会转发到死信交换机Dead-letter，并使用路由键 "DLQ"，
-     * 从而被路由到死信队列DLQ。
-     *
-     * @param deadLetterQueueD 死信队列
-     * @param deadLetterExchange 死信交换机
-     * @return Binding
+     * 死信队列 QD 与死信交换机 Y 绑定（路由键 YD）
      */
     @Bean
-    public Binding bindingDeadLetterQueueDToDeadLetterExchange(@Qualifier("deadLetterQueueD") Queue deadLetterQueueD,
-                                                               @Qualifier("deadLetterExchange") DirectExchange deadLetterExchange) {
-        return BindingBuilder.bind(deadLetterQueueD).to(deadLetterExchange).with("DLQ");
+    public Binding queueDBindingY(@Qualifier("queueD") Queue queueD,
+                                  @Qualifier("yExchange") DirectExchange yExchange) {
+        return BindingBuilder.bind(queueD).to(yExchange).with(DEAD_LETTER_ROUTING_KEY);
+    }
+
+    /**
+     * 统一 JSON 消息转换器：生产端/消费端共用，正确处理 LocalDateTime 等 Java 时间类型，
+     * 替代手写 JSON 字符串，避免时间格式不一致导致的解析失败。
+     */
+    @Bean
+    public MessageConverter messageConverter() {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        return new Jackson2JsonMessageConverter(mapper);
     }
 }
 
@@ -617,12 +611,10 @@ public class QueueConfig {
         order.setId(orderId);
         order.setUserId(userId);
         order.setVoucherId(voucherId);
-        // 你可以用 JSON，也可以用序列化
-        // 增加消息发送的异常处理
-        //放入mq
-        String jsonStr = JSONUtil.toJsonStr(order);
+        // 由统一 Jackson2JsonMessageConverter 序列化为 JSON，无需手动拼接字符串
         try {
-            rabbitTemplate.convertAndSend("Common","CQ",jsonStr );
+            // 发送到普通交换机 X，路由键 XA
+            rabbitTemplate.convertAndSend(QueueConfig.X_EXCHANGE, QueueConfig.QUEUE_A_BINDING_KEY, order);
         } catch (Exception e) {
             log.error("发送 RabbitMQ 消息失败，订单ID: {}", orderId, e);
             throw new RuntimeException("发送消息失败");
@@ -636,66 +628,78 @@ public class QueueConfig {
 
 ```java
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class SeckillVoucherListener {
 
-    @Resource
-    SeckillVoucherServiceImpl seckillVoucherService;
-    
-    @Resource
-    VoucherOrderServiceImpl voucherOrderService;
+    private final TransactionTemplate transactionTemplate;
 
-    /**
-     * 普通队列消费者：监听队列 "CQ"
-     *
-     * 消息从普通队列 "CQ" 进入后进行转换处理，保存订单，同时数据库秒杀库存减一
-     *
-     * @param message RabbitMQ消息
-     * @param channel 消息通道
-     * @throws Exception 异常处理
-     */
-    @RabbitListener(queues = "CQ")
-    public void receivedC(Message message, Channel channel) throws Exception {
-        String msg = new String(message.getBody());
-        log.info("普通队列:");
-        VoucherOrder voucherOrder = JSONUtil.toBean(msg, VoucherOrder.class);
-        log.info(voucherOrder.toString());
-        voucherOrderService.save(voucherOrder);  // 保存订单到数据库
+    @Resource
+    private ISeckillVoucherService seckillVoucherService;   // 依赖接口而非具体实现类
+    @Resource
+    private IVoucherOrderService voucherOrderService;        // 依赖接口而非具体实现类
+    @Resource
+    private MessageConverter messageConverter;
 
-        // 秒杀业务：库存减一操作
-        Long voucherId = voucherOrder.getVoucherId();
-        seckillVoucherService.update()
-                .setSql("stock = stock - 1") // set stock = stock - 1
-                .eq("voucher_id", voucherId)
-                .gt("stock", 0)             // where voucher_id = ? and stock > 0
-                .update();
+    public SeckillVoucherListener(PlatformTransactionManager transactionManager) {
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
     /**
-     * 死信队列消费者：监听队列 "DLQ"
-     *
-     * 消息从死信队列 "DLQ" 进入后进行相同的处理，
-     * 适用于消息因过期或其它原因进入死信队列时的处理逻辑
-     *
-     * @param message RabbitMQ消息
-     * @throws Exception 异常处理
+     * 普通队列消费者：监听队列 "QA"
      */
-    @RabbitListener(queues = "DLQ")
-    public void receivedDLQ(Message message) throws Exception {
-        log.info("死信队列:");
-        String msg = new String(message.getBody());
-        VoucherOrder voucherOrder = JSONUtil.toBean(msg, VoucherOrder.class);
-        log.info(voucherOrder.toString());
-        voucherOrderService.save(voucherOrder);  // 保存订单到数据库
+    @RabbitListener(queues = QueueConfig.QUEUE_A)
+    public void receivedA(Message message, Channel channel) {
+        handleOrder(message, channel);
+    }
 
-        // 秒杀业务：库存减一操作
-        Long voucherId = voucherOrder.getVoucherId();
-        seckillVoucherService.update()
-                .setSql("stock = stock - 1") // set stock = stock - 1
-                .eq("voucher_id", voucherId)
-                .gt("stock", 0)             // where voucher_id = ? and stock > 0
-                .update();
+    /**
+     * 死信队列消费者：监听队列 "QD"（延迟重试后的补偿处理）
+     */
+    @RabbitListener(queues = QueueConfig.DEAD_LETTER_QUEUE_D)
+    public void receivedD(Message message, Channel channel) {
+        handleOrder(message, channel);
+    }
+
+    /**
+     * 统一的订单落库 + 库存扣减逻辑（两个队列复用，避免重复代码）。
+     * 手动确认：成功 basicAck；异常 basicNack(requeue=false) 丢弃，避免毒消息无限重投。
+     */
+    private void handleOrder(Message message, Channel channel) {
+        long deliveryTag = message.getMessageProperties().getDeliveryTag();
+        try {
+            // 用统一 MessageConverter 反序列化，正确处理 LocalDateTime
+            VoucherOrder voucherOrder = (VoucherOrder) messageConverter.fromMessage(message);
+            Long voucherId = voucherOrder.getVoucherId();
+
+            // 幂等校验 + 落库与扣减库存在同一事务，重复消费时按订单ID去重
+            Boolean duplicated = transactionTemplate.execute(status -> {
+                if (voucherOrderService.getById(voucherOrder.getId()) != null) {
+                    return true;
+                }
+                voucherOrderService.save(voucherOrder);
+                boolean success = seckillVoucherService.update()
+                        .setSql("stock = stock - 1") // set stock = stock - 1
+                        .eq("voucher_id", voucherId).gt("stock", 0) // where voucher_id = ? and stock > 0
+                        .update();
+                if (!success) {
+                    log.warn("库存扣减失败，可能已无库存，voucherId: {}", voucherId);
+                }
+                return false;
+            });
+
+            if (Boolean.TRUE.equals(duplicated)) {
+                log.info("订单已存在，跳过重复处理，orderId: {}", voucherOrder.getId());
+            }
+            // 处理成功，手动确认
+            channel.basicAck(deliveryTag, false);
+        } catch (Exception e) {
+            log.error("消费异常，拒绝并丢弃消息，deliveryTag: {}", deliveryTag, e);
+            try {
+                channel.basicNack(deliveryTag, false, false); // requeue=false：不再投递
+            } catch (IOException ioEx) {
+                log.error("basicNack 失败，deliveryTag: {}", deliveryTag, ioEx);
+            }
+        }
     }
 }
 

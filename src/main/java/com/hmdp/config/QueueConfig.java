@@ -1,5 +1,10 @@
 package com.hmdp.config;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.amqp.core.*;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,13 +14,17 @@ import java.util.HashMap;
 public class QueueConfig {
 
     //普通交换机名称
-    public static final String X_EXCHANGE="X";
+    public static final String X_EXCHANGE = "X";
     //死信交换机名称
-    public static final String Y_DEAD_LETTER_EXCHANGE="Y";
+    public static final String Y_DEAD_LETTER_EXCHANGE = "Y";
     //普通队列名称
-    public static final String QUEUE_A="QA";
+    public static final String QUEUE_A = "QA";
     //死信队列名称
-    public static final String DEAD_LETTER_QUEUE_D="QD";
+    public static final String DEAD_LETTER_QUEUE_D = "QD";
+    //普通队列绑定路由键
+    public static final String QUEUE_A_BINDING_KEY = "XA";
+    //死信路由键
+    public static final String DEAD_LETTER_ROUTING_KEY = "YD";
 
 
     /**
@@ -47,7 +56,7 @@ public class QueueConfig {
         //设置死信交换机
         arguments.put("x-dead-letter-exchange",Y_DEAD_LETTER_EXCHANGE);
         //设置死信RoutingKey
-        arguments.put("x-dead-letter-routing-key","YD");
+        arguments.put("x-dead-letter-routing-key", DEAD_LETTER_ROUTING_KEY);
         //设置TTL设置10秒过期
         arguments.put("x-message-ttl",10000);
 
@@ -74,7 +83,7 @@ public class QueueConfig {
     @Bean
     public Binding queueABindingX(@Qualifier("queueA")Queue queueA,
                                   @Qualifier("xExchange") DirectExchange xExchange){
-        return BindingBuilder.bind(queueA).to(xExchange).with("XA");
+        return BindingBuilder.bind(queueA).to(xExchange).with(QUEUE_A_BINDING_KEY);
     }
 
     /**
@@ -86,7 +95,19 @@ public class QueueConfig {
     public  Binding queueDBindingY(@Qualifier("queueD")Queue queueD,
                                    @Qualifier("yExchange") DirectExchange yExchange
     ){
-        return BindingBuilder.bind(queueD).to(yExchange).with("YD");
+        return BindingBuilder.bind(queueD).to(yExchange).with(DEAD_LETTER_ROUTING_KEY);
+    }
+
+    /**
+     * 统一 JSON 消息转换器：生产端/消费端共用，正确处理 LocalDateTime 等 Java 时间类型，
+     * 替代手写 JSON 字符串，避免时间格式不一致导致的解析失败。
+     */
+    @Bean
+    public MessageConverter messageConverter() {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        return new Jackson2JsonMessageConverter(mapper);
     }
 
 

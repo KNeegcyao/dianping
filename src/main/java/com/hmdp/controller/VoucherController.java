@@ -22,7 +22,8 @@ public class VoucherController {
      */
     @PostMapping
     public Result addVoucher(@RequestBody Voucher voucher) {
-        voucherService.addSeckillVoucher(voucher);
+        // 普通券：仅保存基础优惠券信息，不写秒杀表和 Redis 库存
+        voucherService.save(voucher);
         return Result.ok(voucher.getId());
     }
 

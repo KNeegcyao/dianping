@@ -2,6 +2,12 @@
     port: 8081
   spring:
     rabbitmq:
+      listener:
+        simple:
+          auto-startup: true
+          acknowledge-mode: manual
+          concurrency: 5
+          prefetch: 10
       host: localhost
       port: 5672
       username: guest
