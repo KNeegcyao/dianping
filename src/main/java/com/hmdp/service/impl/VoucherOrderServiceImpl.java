@@ -8,6 +8,7 @@ import com.hmdp.mapper.VoucherOrderMapper;
 import com.hmdp.service.ISeckillVoucherService;
 import com.hmdp.service.IVoucherOrderService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.hmdp.utils.RedisConstants;
 import com.hmdp.utils.RedisIdWorker;
 import com.hmdp.utils.UserHolder;
 import lombok.extern.slf4j.Slf4j;
@@ -16,9 +17,11 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.List;
 
 /**
  * 订单服务：秒杀下单使用 Lua 校验库存与一人一单，
@@ -50,9 +53,30 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         SECKILL_SCRIPT.setResultType(Long.class);
     }
 
+    /**
+     * 应用启动时批量预热秒杀优惠券库存到 Redis。
+     * 仅当缓存 key 不存在时才写入，避免覆盖 Redis 中已扣减的实时库存。
+     */
+    @PostConstruct
+    public void preloadSeckillVouchers() {
+        List<SeckillVoucher> vouchers = seckillVoucherService.list();
+        if (vouchers == null || vouchers.isEmpty()) {
+            log.info("秒杀优惠券缓存预热完成，数据库中没有秒杀优惠券数据");
+            return;
+        }
+        int loaded = 0;
+        for (SeckillVoucher voucher : vouchers) {
+            String key = RedisConstants.SECKILL_STOCK_KEY + voucher.getVoucherId();
+            Boolean set = stringRedisTemplate.opsForValue().setIfAbsent(key, voucher.getStock().toString());
+            if (Boolean.TRUE.equals(set)) {
+                loaded++;
+            }
+        }
+        log.info("秒杀优惠券缓存预热完成，共 {} 个，实际写入 {} 个", vouchers.size(), loaded);
+    }
+
     @Override
     public Result seckillVoucher(Long voucherId) {
-        // 0.校验秒杀时间窗
         Result timeCheck = checkTimeWindow(voucherId);
         if (timeCheck != null) {
             return timeCheck;
